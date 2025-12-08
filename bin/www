@@ -21,6 +21,15 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
+// Log uncaught exceptions and unhandled rejections to aid debugging
+process.on('uncaughtException', function(err) {
+  console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
+});
+
+process.on('unhandledRejection', function(reason, promise) {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 /**
  * Listen on provided port, on all network interfaces.
  */
