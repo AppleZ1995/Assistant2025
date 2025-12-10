@@ -8,6 +8,7 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var apiRouter = require('./routes/api');
 var expensesRouter = require('./routes/expenses');
+var adminRouter = require('./routes/admin');
 
 var app = express();
 
@@ -20,11 +21,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+// Redirect HTML requests for child pages back to homepage so all functionality is on the index
+app.use(function(req, res, next) {
+  if (req.method === 'GET' && req.accepts('html')) {
+    if (req.path === '/expenses' || req.path.startsWith('/expenses/') || req.path === '/users' || req.path.startsWith('/users/')) {
+      return res.redirect('/');
+    }
+  }
+  next();
+});
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api', apiRouter);
 app.use('/expenses', expensesRouter);
+app.use('/admin', adminRouter);
 
 // catch 404 and respond appropriately for HTML, JSON, or plain text
 app.use(function(req, res, next) {

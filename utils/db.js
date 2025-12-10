@@ -54,6 +54,7 @@ async function init() {
     title TEXT NOT NULL,
     amount REAL NOT NULL,
     type TEXT NOT NULL,
+    category TEXT,
     note TEXT,
     date TEXT NOT NULL
   );`);
@@ -83,9 +84,56 @@ async function init() {
     });
   }
 
+  // migrate JSON expenses if present (data/expenses.json)
+  try {
+    const jsonFile = path.join(DB_DIR, 'expenses.json');
+    if (fs.existsSync(jsonFile)) {
+      const raw = fs.readFileSync(jsonFile, 'utf8');
+      const arr = JSON.parse(raw || '[]');
+      if (Array.isArray(arr) && arr.length > 0) {
+        for (const it of arr) {
+          // avoid duplicates by checking same date+title
+          // if date missing, skip
+          if (!it.date) continue;
+          const exists = await get(db, 'SELECT COUNT(1) as c FROM expenses WHERE date = ? AND title = ?', [it.date, it.title || '']);
+          if (exists && exists.c > 0) continue;
+          const title = it.title || 'Untitled';
+          const amount = Number(it.amount) || 0;
+          const type = it.type || 'expense';
+          const category = it.category || null;
+          const note = it.note || '';
+          const date = it.date;
+          await run(db, 'INSERT INTO expenses (title, amount, type, category, note, date) VALUES (?, ?, ?, ?, ?, ?)', [title, amount, type, category, note, date]);
+        }
+        // rename imported file to backup
+        try {
+          fs.renameSync(jsonFile, jsonFile + '.bak');
+        } catch (e) {
+          // ignore rename errors
+        }
+      }
+    }
+  } catch (e) {
+    // ignore migration errors but log
+    console.error('Expenses migration error:', e && e.stack ? e.stack : e);
+  }
+
   dbInstance = db;
   return dbInstance;
 }
+
+// Add category column to existing table if missing (safe to run multiple times)
+async function ensureCategoryColumn() {
+  const db = await init();
+  try {
+    await run(db, "ALTER TABLE expenses ADD COLUMN category TEXT");
+  } catch (e) {
+    // SQLite throws if column exists; ignore
+  }
+}
+
+// call once to ensure schema has category
+ensureCategoryColumn().catch(() => {});
 
 function getDB() {
   if (!dbInstance) throw new Error('Database not initialized. Call init() first.');
@@ -110,8 +158,8 @@ async function getTotal() {
 
 async function addExpense(item) {
   const db = getDB();
-  const { title, amount, type, note, date } = item;
-  const res = await run(db, 'INSERT INTO expenses (title, amount, type, note, date) VALUES (?, ?, ?, ?, ?)', [title, amount, type, note, date]);
+  const { title, amount, type, category, note, date } = item;
+  const res = await run(db, 'INSERT INTO expenses (title, amount, type, category, note, date) VALUES (?, ?, ?, ?, ?, ?)', [title, amount, type, category || null, note, date]);
   return res ? res.lastID : null;
 }
 
@@ -121,3 +169,16 @@ async function getCourses(perPage = 10) {
 }
 
 module.exports = { init, getDB, getRecentExpenses, getAllExpenses, getTotal, addExpense, getCourses };
+async function resetAll() {
+  const db = await init();
+  await run(db, 'DELETE FROM expenses');
+  await run(db, 'DELETE FROM courses');
+  // reseed courses
+  const stmt = db.prepare('INSERT INTO courses (title, description) VALUES (?, ?)');
+  for (let i = 1; i <= 50; i++) {
+    await new Promise((resolve, reject) => stmt.run(`Course ${i}`, `Description for course ${i}`, (err) => err ? reject(err) : resolve()));
+  }
+  stmt.finalize();
+}
+
+module.exports = { init, getDB, getRecentExpenses, getAllExpenses, getTotal, addExpense, getCourses, resetAll };

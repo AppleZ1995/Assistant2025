@@ -30,6 +30,7 @@ router.post('/', async function(req, res, next) {
       title: title,
       amount: signed,
       type: type,
+      category: req.body.category || null,
       note: req.body.note || '',
       date: new Date().toISOString()
     };
