@@ -20,6 +20,7 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+var db = require('../utils/db');
 
 // Log uncaught exceptions and unhandled rejections to aid debugging
 process.on('uncaughtException', function(err) {
@@ -31,12 +32,17 @@ process.on('unhandledRejection', function(reason, promise) {
 });
 
 /**
- * Listen on provided port, on all network interfaces.
+ * Initialize DB then listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+db.init().then(function() {
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+}).catch(function(err) {
+  console.error('Failed to initialize database:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
 
 /**
  * Normalize a port into a number, string, or false.

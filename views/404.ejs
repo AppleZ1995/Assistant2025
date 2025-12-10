@@ -1,14 +1,8 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Page Not Found</title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
-  </head>
-  <body>
-    <h1>404 — Page Not Found</h1>
-    <p>The requested URL <strong><%= url %></strong> was not found on this server.</p>
-    <p><a href="/">Go to the homepage</a></p>
-  </body>
-</html>
+<% include partials/header %>
+  <div class="py-5 text-center">
+    <h1 class="display-4">404</h1>
+    <p class="lead">Page Not Found</p>
+    <p>The requested URL <code><%= url %></code> was not found on this server.</p>
+    <a class="btn btn-primary" href="/">Go to homepage</a>
+  </div>
+<% include partials/footer %>
